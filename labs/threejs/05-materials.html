@@ -1,0 +1,249 @@
+<!doctype html>
+<html class="no-js" lang="">
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="x-ua-compatible" content="ie=edge">
+	<title></title>
+	<meta name="description" content="">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<style>
+		body {
+			margin: 0;
+			overflow: hidden;
+		}
+	</style>
+</head>
+<body>
+<div id="canvas"></div>
+<script type="text/javascript" src="./js/vendors/three.js"></script>
+<script type="text/javascript" src="./js/vendors/OrbitControls.js"></script>
+<script type="text/javascript" src="./js/vendors/stats.js"></script>
+<script type="text/javascript" src="./js/vendors/dat.gui.js"></script>
+<script type="text/javascript">
+	var t = THREE;
+	var scene, camera, renderer;
+	var controls, stats, orbitControls;
+	var cubes = [];
+
+	// controller
+	var Controls = function() {
+		this.rotationSpeedX = 0.01;
+		this.rotationSpeedY = 0.01;
+		this.rotationSpeedZ = 0.01;
+		this.color = '#a8a8dc';       // 전체 Mesh의 색상값
+		this.rotation = false;        // 회전 여부
+	};
+
+	var MaterialType = {
+		Basic: 'basic',
+		Lambert: 'lambert',
+		Normal: 'normal',
+		Phong: 'phong',
+		Standard: 'standard'
+	};
+
+	function init() {
+		scene = new t.Scene;
+		camera = new t.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 500);
+		renderer = new t.WebGLRenderer();
+
+		renderer.setClearColor(0xdddddd);
+		renderer.setSize(window.innerWidth, window.innerHeight);
+		renderer.shadowMap.enabled = true;
+		renderer.shadowMap.type = t.PCFShadowMap;
+		renderer.shadowMapSoft = true;
+
+		orbitControls = new THREE.OrbitControls(camera, renderer.domElement);
+		orbitControls.rotateSpeed = 0.35;
+
+		document.getElementById('canvas').appendChild(renderer.domElement);
+
+		controls = new Controls();
+		stats = initStats();
+
+		// axis
+		var axis = new t.AxisHelper(10);
+		scene.add(axis);
+
+		// grid
+		var grid = new t.GridHelper(50, 20, new t.Color(0xff0000));
+		scene.add(grid);
+
+		// cube
+		var cubeGeometry = new t.BoxGeometry(5, 5, 5);
+		var cube;
+
+		cube = createMesh(cubeGeometry, MaterialType.Basic);
+		cube.position.set(-12.5, 4, 2.5);
+		cube.castShadow = true;
+		cubes.push(cube);
+
+		cube = createMesh(cubeGeometry, MaterialType.Normal);
+		cube.position.set(-5, 4, 2.5);
+		cube.castShadow = true;
+		cubes.push(cube);
+
+		cube = createMesh(cubeGeometry, MaterialType.Standard);
+		cube.position.set(2.5, 4, 2.5);
+		cube.castShadow = true;
+		cubes.push(cube);
+
+		cube = createMesh(cubeGeometry, MaterialType.Lambert);
+		cube.position.set(10, 4, 2.5);
+		cube.castShadow = true;
+		cubes.push(cube);
+
+		cube = createMesh(cubeGeometry, MaterialType.Phong);
+		cube.position.set(17.5, 4, 2.5);
+		cube.castShadow = true;
+		cubes.push(cube);
+
+		cubes.forEach(function(c) {
+			scene.add(c);
+		});
+
+		// plain
+		var planeGeometry = new t.PlaneGeometry(50, 50);
+		var planeMeterial = new t.MeshLambertMaterial({color: 0xffffff});
+		var plane = new t.Mesh(planeGeometry, planeMeterial);
+
+		plane.rotation.x = -0.5 * Math.PI;
+		plane.position.y = -0.1;
+		plane.receiveShadow = true;
+		scene.add(plane);
+
+		// ambient light
+		var ambientLight = new t.AmbientLight(0x0c0c0c);
+		scene.add(ambientLight);
+
+		// spotlight
+		var spotLight = new t.SpotLight(0xffffff);
+		spotLight.intensity = 2;
+		spotLight.castShadow = true;
+		spotLight.angle = 0.5;
+		spotLight.position.set(15, 30, -30);
+		spotLight.shadow.mapSize.width = 8192;
+		spotLight.shadow.mapSize.height = 8192;
+		scene.add(spotLight);
+
+		// light debug line
+		var lightHelper = new t.SpotLightHelper(spotLight);
+		scene.add(lightHelper);
+
+		// camera positioning
+		camera.position.x = 40;
+		camera.position.y = 40;
+		camera.position.z = 40;
+
+		camera.lookAt(scene.position);
+
+		initGui();
+		render();
+	}
+
+	function createMesh(geometry, type) {
+		var meshMaterial = null;
+
+		type = type || MaterialType.Basic;
+
+		//var color = Math.random() * 0xffffff;
+		var color = controls.color;
+
+		switch (type) {
+			case MaterialType.Basic:
+				meshMaterial = new t.MeshBasicMaterial({ color: color });
+				break;
+			case MaterialType.Normal:
+				meshMaterial = new t.MeshNormalMaterial();
+				break;
+			case MaterialType.Standard:
+				meshMaterial = new t.MeshStandardMaterial({ color: color });
+				break;
+			case MaterialType.Lambert:
+				meshMaterial = new t.MeshLambertMaterial({ color: color });
+				break;
+			case MaterialType.Phong:
+				meshMaterial = new t.MeshPhongMaterial({ color: color, shininess: 50 });
+				break;
+		}
+
+		meshMaterial.side = t.DoubleSide;
+
+		//var wireframeMaterial = new t.MeshBasicMaterial();
+		//wireframeMaterial.wireframe = true;
+
+		//return t.SceneUtils.createMultiMaterialObject(geometry, [meshMaterial, wireframeMaterial]);
+		var mesh = new t.Mesh(geometry, meshMaterial);
+		mesh.name = 'cube';
+
+		return mesh;
+	}
+
+	function render() {
+		stats.update();
+		orbitControls.update();
+
+		requestAnimationFrame(render);
+
+		scene.traverse(function (e) {
+			if (e instanceof t.Mesh && e.name == 'cube') {
+				if (controls.rotation) {
+					e.rotation.x += controls.rotationSpeedX;
+					e.rotation.y += controls.rotationSpeedY;
+					e.rotation.z += controls.rotationSpeedZ;
+				}
+			}
+		});
+
+		renderer.render(scene, camera);
+	}
+
+	function initGui() {
+		var gui = new dat.GUI();
+		var f1 = gui.addFolder('Rotation Speed');
+		f1.add(controls, 'rotationSpeedX', 0.01, 0.1);
+		f1.add(controls, 'rotationSpeedY', 0.01, 0.1);
+		f1.add(controls, 'rotationSpeedZ', 0.01, 0.1);
+		f1.add(controls, 'rotation', false);
+
+		var f2 = gui.addFolder('Setting');
+		f2.addColor(controls, 'color').onChange(function(color) {
+			scene.traverse(function (e) {
+				if (e instanceof t.Mesh && e.name == 'cube') {
+					// Normal material같은 경우 color property가 없으므로, color 속성 존재 여부도 검사
+					if (e.material && e.material.hasOwnProperty('color')) {
+						e.material.color = new t.Color(color);
+					}
+				}
+			});
+		});
+
+		f1.open();
+		f2.open();
+	}
+
+	function initStats() {
+		var stats = new Stats();
+
+		stats.setMode(0);   // 0: fps, 1: ms
+
+		stats.domElement.style.position = 'absolute';
+		stats.domElement.style.left = '0';
+		stats.domElement.style.top = '0';
+
+		document.body.appendChild(stats.domElement);
+
+		return stats;
+	}
+
+	function onResize() {
+		camera.aspect = window.innerWidth / window.innerHeight;
+		camera.updateProjectionMatrix();
+		renderer.setSize(window.innerWidth, window.innerHeight);
+	}
+
+	window.onload = init;
+	window.addEventListener('resize', onResize, false);
+</script>
+</body>
+</html>
