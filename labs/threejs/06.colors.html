@@ -1,0 +1,323 @@
+<!doctype html>
+<html class="no-js" lang="">
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="x-ua-compatible" content="ie=edge">
+	<title></title>
+	<meta name="description" content="">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<style>
+		body {
+			margin: 0;
+			overflow: hidden;
+		}
+		div#stats {
+			position: absolute;
+			left: 0;
+			top: 0;
+		}
+	</style>
+</head>
+<body>
+<div id="canvas"></div>
+<script type="text/javascript" src="./js/vendors/three.js"></script>
+<script type="text/javascript" src="./js/vendors/OrbitControls.js"></script>
+<script type="text/javascript" src="./js/vendors/stats.js"></script>
+<script type="text/javascript" src="./js/vendors/dat.gui.js"></script>
+<script type="text/javascript">
+	var t = THREE;
+	var scene, camera, renderer;
+	var controls, stats, orbitControls;
+	var obj, objGeometry;
+
+	/**
+	 * Material Type Enum
+	 */
+	var MaterialType = {
+		Basic: 'basic',
+		Lambert: 'lambert',
+		Normal: 'normal',
+		Phong: 'phong',
+		Standard: 'standard'
+	};
+
+	/**
+	 * 초기 설정값
+	 */
+	var initSetting = {
+		diffuseColor: '#ff0000',
+		ambientColor: '#000000',
+		specularColor: '#ffffff',
+		emissiveColor: '#000033',
+		shininess: 50,
+		opacity: 1,
+		material: MaterialType.Phong
+	};
+
+	/**
+	 * Controller
+	 */
+	var Controls = function() {
+		var self = this;
+
+		reset(this);
+
+		this.reset = function() {
+//			reset(self);
+//			initObjectSetting();
+			drawObject();
+		};
+	};
+
+	/**
+	 * 설정 초기화
+	 * @param control
+	 */
+	function reset(control) {
+		control.diffuseColor = initSetting.diffuseColor;
+		control.ambientColor = initSetting.ambientColor;
+		control.specularColor = initSetting.specularColor;
+		control.emissiveColor = initSetting.emissiveColor;
+		control.shininess = initSetting.shininess;
+		control.opacity = initSetting.opacity;
+		control.material = initSetting.material;
+	}
+
+	/**
+	 * GUI 초기화
+	 */
+	function initGui() {
+		var gui = new dat.GUI();
+		var f1 = gui.addFolder('Color');
+
+		f1.addColor(controls, 'diffuseColor').name('Color (Diffuse)').onChange(function(color) {
+			obj.material.color = new t.Color(color);
+		});
+		f1.addColor(controls, 'ambientColor').name('Ambient Color').onChange(function(color) {
+			obj.material.ambient = new t.Color(color);
+		});
+		f1.addColor(controls, 'specularColor').name('Specular Color').onChange(function(color) {
+			obj.material.specular = new t.Color(color);
+		});
+		f1.addColor(controls, 'emissiveColor').name('Emissive Color').onChange(function(color) {
+			obj.material.emissive = new t.Color(color);
+		});
+		f1.open();
+
+		gui.add(controls, 'shininess', 0, 100).name('Shininess').onChange(function(value) {
+			obj.material.shininess = value;
+		});
+		gui.add(controls, 'opacity', 0.0, 1.0).name('Opacity').onChange(function(value) {
+			obj.material.transparent = (value < 1.0);
+			obj.material.opacity = value;
+		});
+		gui.add(controls, 'material', ['basic', 'lambert', 'phong']).name('Material Type').onChange(function(value) {
+			drawObject();
+		});
+		gui.add(controls, 'reset').name('Reset');
+	}
+
+	/**
+	 * Stats 초기화
+	 * @returns {Stats}
+	 */
+	function initStats() {
+		var stats = new Stats();
+
+		stats.setMode(0);   // 0: fps, 1: ms
+		document.body.appendChild(stats.domElement);
+
+		return stats;
+	}
+
+	/**
+	 * Window Resize Handler
+	 */
+	function onResize() {
+		camera.aspect = window.innerWidth / window.innerHeight;
+		camera.updateProjectionMatrix();
+		renderer.setSize(window.innerWidth, window.innerHeight);
+	}
+
+	/**
+	 * 바닥면 출력
+	 */
+	function drawFloor() {
+		// plain
+		var planeGeometry = new t.PlaneGeometry(50, 50);
+		var planeMeterial = new t.MeshLambertMaterial({color: 0xffffff});
+		var plane = new t.Mesh(planeGeometry, planeMeterial);
+
+		plane.rotation.x = -0.5 * Math.PI;
+		plane.position.y = -0.1;
+		plane.receiveShadow = true;
+		scene.add(plane);
+
+		// axis
+		var axis = new t.AxisHelper(10);
+		scene.add(axis);
+
+		// grid
+		var grid = new t.GridHelper(50, 20, new t.Color(0xff0000));
+		scene.add(grid);
+	}
+
+	/**
+	 * 조명 출력
+	 */
+	function drawLights() {
+		// ambient light
+		var ambientLight = new t.AmbientLight(0x0c0c0c);
+		scene.add(ambientLight);
+
+		// spotlight
+		var spotLight = new t.SpotLight(0xffffff);
+		spotLight.intensity = 2;
+		spotLight.castShadow = true;
+		spotLight.angle = 0.8;
+		spotLight.position.set(25, 30, 0);
+		spotLight.shadow.mapSize.width = 8192;
+		spotLight.shadow.mapSize.height = 8192;
+		scene.add(spotLight);
+
+		// light debug line
+		var lightHelper = new t.SpotLightHelper(spotLight);
+		scene.add(lightHelper);
+	}
+
+	/**
+	 * Sphere를 Control 개체값으로 초기화
+	 */
+	function initObjectSetting(o) {
+		o.material.color = new t.Color(controls.diffuseColor);
+		o.material.ambient = new t.Color(controls.ambientColor);
+		o.material.specular = new t.Color(controls.specularColor);
+		if (controls.material !== MaterialType.Basic) {
+			o.material.emissive = new t.Color(controls.emissiveColor);
+		}
+		o.material.shininess = controls.shininess;
+		o.material.opacity = controls.opacity;
+	}
+
+	/**
+	 * Sphere 출력
+	 */
+	function drawObject() {
+		scene.traverse(function(e) {
+			if (e instanceof t.Mesh && e.name === 'rootObject') {
+				scene.remove(e);
+			}
+		});
+
+		objGeometry = new t.SphereGeometry(10, 30, 30);
+
+		obj = createMesh(objGeometry, controls.material, false);
+		obj.name = 'rootObject';
+
+		initObjectSetting(obj);
+
+		obj.position.set(0, 11, 0);
+		obj.castShadow = true;
+		scene.add(obj);
+	}
+
+	/**
+	 * Mesh 생성 유틸
+	 * @param geometry
+	 * @param type
+	 * @param useWireframe
+	 * @returns {*}
+	 */
+	function createMesh(geometry, type, useWireframe) {
+		var meshMaterial = null;
+
+		if (typeof type === 'undefined') type = MaterialType.Basic;
+		if (typeof useWireframe === 'undefined') useWireframe = true;
+
+		switch (type) {
+			case MaterialType.Basic:
+				meshMaterial = new t.MeshBasicMaterial();
+				break;
+			case MaterialType.Normal:
+				meshMaterial = new t.MeshNormalMaterial();
+				break;
+			case MaterialType.Standard:
+				meshMaterial = new t.MeshStandardMaterial();
+				break;
+			case MaterialType.Lambert:
+				meshMaterial = new t.MeshLambertMaterial();
+				break;
+			case MaterialType.Phong:
+				meshMaterial = new t.MeshPhongMaterial();
+				break;
+		}
+
+		meshMaterial.side = t.DoubleSide;
+
+		var mesh = null;
+
+		if (useWireframe) {
+			var wireframeMaterial = new t.MeshBasicMaterial({ color: 0x999999 });
+			wireframeMaterial.wireframe = true;
+
+			mesh = t.SceneUtils.createMultiMaterialObject(geometry, [meshMaterial, wireframeMaterial]);
+		} else {
+			mesh = new t.Mesh(geometry, meshMaterial);
+		}
+
+		return mesh;
+	}
+
+	/**
+	 * Main Init Func
+	 */
+	function init() {
+		scene = new t.Scene;
+		camera = new t.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 500);
+		renderer = new t.WebGLRenderer();
+
+		renderer.setClearColor(0xdddddd);
+		renderer.setSize(window.innerWidth, window.innerHeight);
+		renderer.shadowMap.enabled = true;
+		renderer.shadowMap.type = t.PCFShadowMap;
+		renderer.shadowMapSoft = true;
+
+		// camera positioning
+		camera.position.x = 40;
+		camera.position.y = 40;
+		camera.position.z = 40;
+		camera.lookAt(scene.position);
+
+		orbitControls = new THREE.OrbitControls(camera, renderer.domElement);
+		orbitControls.rotateSpeed = 0.35;
+
+		document.getElementById('canvas').appendChild(renderer.domElement);
+		window.addEventListener('resize', onResize, false);
+
+		controls = new Controls();
+		stats = initStats();
+
+		drawFloor();
+		drawLights();
+		drawObject();
+
+		initGui();
+		render();
+	}
+
+	/**
+	 * Render Func
+	 */
+	function render() {
+		stats.update();
+		orbitControls.update();
+
+		requestAnimationFrame(render);
+
+		renderer.render(scene, camera);
+	}
+
+	window.onload = init;
+</script>
+</body>
+</html>
