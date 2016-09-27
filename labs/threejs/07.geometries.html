@@ -52,7 +52,7 @@
 	 * Controller
 	 */
 	var Controls = function() {
-		var self = this;
+		this.material = MaterialType.Basic;
 
 		reset(this);
 
@@ -156,10 +156,48 @@
 	 * Geometries 출력
 	 */
 	function drawObjects() {
-		var geometry = new t.SphereGeometry(10, 30, 30);
+		var geometry, obj;
 
-		var obj = createMesh(geometry, controls.material, false);
-		obj.position.set(0, 11, 0);
+		// line 1
+		geometry = new t.BoxGeometry(5, 5, 5);
+		obj = createMesh(geometry, controls.material, true);
+		obj.position.set(-15, 5, -15);
+		scene.add(obj);
+
+		geometry = new t.CircleGeometry(3.5, 32);
+		obj = createMesh(geometry, controls.material, true);
+		obj.position.set(-5, 5, -15);
+		scene.add(obj);
+
+		geometry = new t.ConeGeometry(3.5, 5, 32, 3);
+		obj = createMesh(geometry, controls.material, true);
+		obj.position.set(5, 5, -15);
+		scene.add(obj);
+
+		geometry = new t.CylinderGeometry(3.5, 3.5, 5, 32, 3, true);
+		obj = createMesh(geometry, controls.material, true);
+		obj.position.set(15, 5, -15);
+		scene.add(obj);
+
+		// line 2
+		geometry = new t.DodecahedronGeometry(3.5, 0);
+		obj = createMesh(geometry, controls.material, true);
+		obj.position.set(-15, 5, -5);
+		scene.add(obj);
+
+		geometry = new t.CircleGeometry(3.5, 32);
+		obj = createMesh(geometry, controls.material, true);
+		obj.position.set(-5, 5, -5);
+		scene.add(obj);
+
+		geometry = new t.ConeGeometry(3.5, 5, 32, 3);
+		obj = createMesh(geometry, controls.material, true);
+		obj.position.set(5, 5, -5);
+		scene.add(obj);
+
+		geometry = new t.CylinderGeometry(3.5, 3.5, 5, 32, 3, true);
+		obj = createMesh(geometry, controls.material, true);
+		obj.position.set(15, 5, -5);
 		scene.add(obj);
 	}
 
@@ -195,12 +233,14 @@
 		}
 
 		meshMaterial.side = t.DoubleSide;
+		meshMaterial.color = new t.Color('#2794D1');
 
 		var mesh = null;
 
 		if (useWireframe) {
-			var wireframeMaterial = new t.MeshBasicMaterial({ color: 0x999999 });
+			var wireframeMaterial = new t.MeshBasicMaterial({ color: 0x000000 });
 			wireframeMaterial.wireframe = true;
+			wireframeMaterial.scale = 1.1;
 
 			mesh = t.SceneUtils.createMultiMaterialObject(geometry, [meshMaterial, wireframeMaterial]);
 		} else {
