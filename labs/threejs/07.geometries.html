@@ -21,6 +21,7 @@
 <body>
 <div id="canvas"></div>
 <script type="text/javascript" src="./js/vendors/three.js"></script>
+<script type="text/javascript" src="./js/vendors/detector.js"></script>
 <script type="text/javascript" src="./js/vendors/OrbitControls.js"></script>
 <script type="text/javascript" src="./js/vendors/stats.js"></script>
 <script type="text/javascript" src="./js/vendors/dat.gui.js"></script>
@@ -284,7 +285,12 @@
 	function init() {
 		scene = new t.Scene;
 		camera = new t.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 500);
-		renderer = new t.WebGLRenderer();
+
+		if (Detector.webgl) {
+			renderer = new t.WebGLRenderer({antialias: true});
+		} else {
+			renderer = new t.CanvasRenderer();
+		}
 
 		renderer.setClearColor(0xdddddd);
 		renderer.setSize(window.innerWidth, window.innerHeight);
