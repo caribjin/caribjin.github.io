@@ -1,0 +1,341 @@
+<!doctype html>
+<html class="no-js" lang="">
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="x-ua-compatible" content="ie=edge">
+	<title></title>
+	<meta name="description" content="">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<style>
+		body {
+			margin: 0;
+			overflow: hidden;
+		}
+		div#stats {
+			position: absolute;
+			left: 0;
+			top: 0;
+		}
+	</style>
+</head>
+<body>
+<div id="canvas"></div>
+<script type="text/javascript" src="./js/vendors/three.js"></script>
+<script type="text/javascript" src="./js/vendors/detector.js"></script>
+<script type="text/javascript" src="./js/vendors/OrbitControls.js"></script>
+<script type="text/javascript" src="./js/vendors/stats.js"></script>
+<script type="text/javascript" src="./js/vendors/dat.gui.js"></script>
+<script type="text/javascript">
+	var t = THREE;
+	var scene, camera, renderer;
+	var controls, stats, orbitControls;
+
+	/**
+	 * Material Type Enum
+	 */
+	var MaterialType = {
+		Basic: 'basic',
+		Lambert: 'lambert',
+		Normal: 'normal',
+		Phong: 'phong',
+		Standard: 'standard'
+	};
+
+	/**
+	 * 초기 설정값
+	 */
+	var initSetting = {
+		rotationSpeed: 0.01,
+		rotation: false
+	};
+
+	/**
+	 * Controller
+	 */
+	var Controls = function() {
+		this.material = MaterialType.Basic;
+
+		reset(this);
+
+		this.reset = function() {
+			drawObjects();
+		};
+	};
+
+	/**
+	 * 설정 초기화
+	 * @param control
+	 */
+	function reset(control) {
+		control.rotationSpeed = initSetting.rotationSpeed;
+		control.rotation = initSetting.rotation;
+	}
+
+	/**
+	 * GUI 초기화
+	 */
+	function initGui() {
+		var gui = new dat.GUI();
+		var f1 = gui.addFolder('Rotation');
+
+		f1.add(controls, 'rotationSpeed', 0.01, 0.1);
+		f1.add(controls, 'rotation', false);
+		f1.open();
+	}
+
+	/**
+	 * Stats 초기화
+	 * @returns {Stats}
+	 */
+	function initStats() {
+		var stats = new Stats();
+
+		stats.setMode(0);   // 0: fps, 1: ms
+		document.body.appendChild(stats.domElement);
+
+		return stats;
+	}
+
+	/**
+	 * Window Resize Handler
+	 */
+	function onResize() {
+		camera.aspect = window.innerWidth / window.innerHeight;
+		camera.updateProjectionMatrix();
+		renderer.setSize(window.innerWidth, window.innerHeight);
+	}
+
+	/**
+	 * 바닥면 출력
+	 */
+	function drawFloor() {
+		// texture
+		var floorTexture = t.ImageUtils.loadTexture('textures/floor_2.jpg');
+		floorTexture.wrapS = floorTexture.wrapT = t.RepeatWrapping;
+		floorTexture.repeat.set(2, 2);
+
+		var planeMaterial = new t.MeshLambertMaterial({
+			map: floorTexture,
+			side: t.DoubleSide
+		});
+
+		// plain
+		var planeGeometry = new t.PlaneGeometry(50, 50);
+		var plane = new t.Mesh(planeGeometry, planeMaterial);
+
+		plane.rotation.x = -0.5 * Math.PI;
+		plane.position.y = -0.1;
+		plane.receiveShadow = true;
+		scene.add(plane);
+
+		// axis
+		//var axis = new t.AxisHelper(10);
+		//scene.add(axis);
+
+		// grid
+		//var grid = new t.GridHelper(50, 20, new t.Color(0xff0000));
+		//scene.add(grid);
+	}
+
+	/**
+	 * 조명 출력
+	 */
+	function drawLights() {
+		// ambient light
+		var ambientLight = new t.AmbientLight(0x0c0c0c);
+		scene.add(ambientLight);
+
+		// spotlight
+		var spotLight = new t.SpotLight(0xcccccc);
+		spotLight.intensity = 2;
+		spotLight.castShadow = true;
+		spotLight.angle = 0.8;
+		spotLight.position.set(35, 40, 30);
+		spotLight.shadow.mapSize.width = 8192;
+		spotLight.shadow.mapSize.height = 8192;
+		scene.add(spotLight);
+
+		// point light
+		var pointLight = new t.PointLight(0xffffff);
+		pointLight.position.set(-10, 10, 10);
+//		scene.add(pointLight);
+
+		// light debug line
+		scene.add(new t.SpotLightHelper(spotLight));
+		scene.add(new t.PointLightHelper(pointLight));
+	}
+
+	/**
+	 * Geometries 출력
+	 */
+	function drawObjects() {
+		var geometry, obj, texture;
+
+		// sphere
+		geometry = new t.SphereGeometry(7, 32, 32);
+
+		texture = t.ImageUtils.loadTexture('textures/paint_1.jpg');
+		obj = createMesh(geometry, MaterialType.Phong, texture);
+		obj.position.set(-14, 10, 0);
+		scene.add(obj);
+
+		// crate
+		geometry = new t.BoxGeometry(10, 10, 10);
+		texture = t.ImageUtils.loadTexture('textures/crate_1.jpg');
+		obj = createMesh(geometry, MaterialType.Lambert, texture);
+		obj.position.set(1, 10, 0);
+		scene.add(obj);
+
+		// number box
+		geometry = new t.BoxGeometry(10, 10, 10);
+		var arrMaterial = [];
+		arrMaterial.push(new t.MeshBasicMaterial({
+			map: t.ImageUtils.loadTexture('textures/1.jpg')
+		}));
+		arrMaterial.push(new t.MeshBasicMaterial({
+			map: t.ImageUtils.loadTexture('textures/2.jpg')
+		}));
+		arrMaterial.push(new t.MeshBasicMaterial({
+			map: t.ImageUtils.loadTexture('textures/4.jpg')
+		}));
+		arrMaterial.push(new t.MeshBasicMaterial({
+			map: t.ImageUtils.loadTexture('textures/3.jpg')
+		}));
+		arrMaterial.push(new t.MeshBasicMaterial({
+			map: t.ImageUtils.loadTexture('textures/5.jpg')
+		}));
+		arrMaterial.push(new t.MeshBasicMaterial({
+			map: t.ImageUtils.loadTexture('textures/6.jpg')
+		}));
+		var diceMaterial = new t.MeshFaceMaterial(arrMaterial);
+		var diceMesh = new t.Mesh(geometry, diceMaterial);
+
+		diceMesh.name = 'mesh';
+		diceMesh.position.set(15, 10, 0);
+		diceMesh.castShadow = true;
+		scene.add(diceMesh);
+	}
+
+	/**
+	 * Mesh 생성 유틸
+	 * @param geometry
+	 * @param type
+	 * @param useWireframe
+	 * @returns {*}
+	 */
+	function createMesh(geometry, type, texture, useWireframe) {
+		var meshMaterial = null;
+
+		if (typeof type === 'undefined') type = MaterialType.Basic;
+		if (typeof texture === 'undefined') texture = '';
+		if (typeof useWireframe === 'undefined') useWireframe = false;
+
+		switch (type) {
+			case MaterialType.Basic:
+				meshMaterial = new t.MeshBasicMaterial();
+				if (texture) meshMaterial.map = texture;
+				break;
+			case MaterialType.Normal:
+				meshMaterial = new t.MeshNormalMaterial();
+				break;
+			case MaterialType.Standard:
+				meshMaterial = new t.MeshStandardMaterial();
+				if (texture) meshMaterial.map = texture;
+				break;
+			case MaterialType.Lambert:
+				meshMaterial = new t.MeshLambertMaterial();
+				if (texture) meshMaterial.map = texture;
+				break;
+			case MaterialType.Phong:
+				meshMaterial = new t.MeshPhongMaterial();
+				if (texture) meshMaterial.map = texture;
+				break;
+		}
+
+		meshMaterial.side = t.DoubleSide;
+		//meshMaterial.color = new t.Color('#2794D1');
+
+		var mesh = null;
+
+		if (useWireframe) {
+			var wireframeMaterial = new t.MeshBasicMaterial({ color: 0x000000, wireframe: true, transparent: true });
+
+			mesh = t.SceneUtils.createMultiMaterialObject(geometry, [meshMaterial, wireframeMaterial]);
+		} else {
+			mesh = new t.Mesh(geometry, meshMaterial);
+		}
+
+		mesh.name = 'mesh';
+		mesh.castShadow = true;
+
+		return mesh;
+	}
+
+	/**
+	 * Main Init Func
+	 */
+	function init() {
+		scene = new t.Scene;
+		camera = new t.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 500);
+
+		if (Detector.webgl) {
+			renderer = new t.WebGLRenderer({antialias: true});
+		} else {
+			throw new Error('This browser does not support webgl.')
+		}
+
+		renderer.setClearColor(0xdddddd);
+		renderer.setSize(window.innerWidth, window.innerHeight);
+		renderer.shadowMap.enabled = true;
+		renderer.shadowMap.type = t.PCFShadowMap;
+		renderer.shadowMapSoft = true;
+
+		// camera positioning
+		camera.position.x = 40;
+		camera.position.y = 40;
+		camera.position.z = 40;
+		camera.lookAt(scene.position);
+
+		orbitControls = new THREE.OrbitControls(camera, renderer.domElement);
+		orbitControls.rotateSpeed = 0.35;
+
+		document.getElementById('canvas').appendChild(renderer.domElement);
+		window.addEventListener('resize', onResize, false);
+
+		controls = new Controls();
+		stats = initStats();
+
+		drawFloor();
+		drawLights();
+		drawObjects();
+
+		initGui();
+		render();
+	}
+
+	/**
+	 * Render Func
+	 */
+	function render() {
+		stats.update();
+		orbitControls.update();
+
+		requestAnimationFrame(render);
+
+		scene.traverse(function (e) {
+			if (e instanceof t.Mesh && e.name == 'mesh') {
+				if (controls.rotation) {
+					e.rotation.x += controls.rotationSpeed;
+					e.rotation.y += controls.rotationSpeed;
+					e.rotation.z += controls.rotationSpeed;
+				}
+			}
+		});
+
+		renderer.render(scene, camera);
+	}
+
+	window.onload = init;
+</script>
+</body>
+</html>
