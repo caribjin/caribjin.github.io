@@ -295,9 +295,7 @@
 		camera.position.y = 40;
 		camera.position.z = 40;
 
-		var target = scene.position;
-		target.y -= 10;
-		camera.lookAt(target);
+		camera.lookAt(scene.position);
 
 		orbitControls = new THREE.OrbitControls(camera, renderer.domElement);
 		orbitControls.rotateSpeed = 0.35;
