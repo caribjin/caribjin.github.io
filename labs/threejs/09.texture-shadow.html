@@ -46,7 +46,11 @@
 	 */
 	var initSetting = {
 		rotationSpeed: 0.01,
-		rotation: false
+		rotation: false,
+		angle: 0.7,
+		penumbra: 0.2,
+		decay: 2,
+		distance: 550
 	};
 
 	/**
@@ -69,6 +73,10 @@
 	function reset(control) {
 		control.rotationSpeed = initSetting.rotationSpeed;
 		control.rotation = initSetting.rotation;
+		control.angle = initSetting.angle;
+		control.penumbra = initSetting.penumbra;
+		control.decay = initSetting.decay;
+		control.distance = initSetting.distance;
 	}
 
 	/**
@@ -76,11 +84,15 @@
 	 */
 	function initGui() {
 		var gui = new dat.GUI();
-		var f1 = gui.addFolder('Rotation');
 
+		var f1 = gui.addFolder('Rotation');
 		f1.add(controls, 'rotationSpeed', 0.01, 0.1);
 		f1.add(controls, 'rotation', false);
 		f1.open();
+
+		var f2 = gui.addFolder('Light');
+		f2.add(controls, 'angle', 0, 1);
+		f2.open();
 	}
 
 	/**
@@ -137,55 +149,48 @@
 		//scene.add(grid);
 	}
 
+	function createSpotLight(color) {
+		var light = new t.SpotLight(color, 2);
+		light.castShadow = true;
+		light.angle = controls.angle;
+		light.penumbra = 0.2;
+		light.decay = 2;
+		light.distance = 550;
+
+		light.shadow.mapSize.width = 1024;
+		light.shadow.mapSize.height = 1024;
+
+		return light;
+	}
+
 	/**
 	 * 조명 출력
 	 */
 	function drawLights() {
 		// ambient light
-//		var ambientLight = new t.AmbientLight(0x0c0c0c);
-//		scene.add(ambientLight);
+		var ambientLight = new t.AmbientLight(0x0c0c0c);
+		scene.add(ambientLight);
 
 		// spotlight #1
-		var spotLight1 = new t.SpotLight(0xffff00);
-		spotLight1.position.set(-60, 150, -30);
-		spotLight1.penumbra = 0.3;
-//		spotLight1.shadowCameraVisible = true;
-//		spotLight1.shadowDarkness = 0.95;
-		spotLight1.intensity = 2;
-		spotLight1.castShadow = true;
-		spotLight1.shadow.mapSize.width = 1024;
-		spotLight1.shadow.mapSize.height = 1024;
+		var spotLight1 = createSpotLight(0xff7f00);
+		spotLight1.position.set(-150, 150, -150);
 		scene.add(spotLight1);
 
 		// spotlight #2
-		var spotLight2 = new t.SpotLight(0xff0000);
-		spotLight2.position.set(60, 150, -60);
-		spotLight2.penumbra = 0.3;
-		spotLight2.shadowCameraVisible = true;
-		spotLight2.shadowDarkness = 0.70;
-		spotLight2.intensity = 2;
-		spotLight2.castShadow = true;
-		spotLight2.shadow.mapSize.width = 8192;
-		spotLight2.shadow.mapSize.height = 8192;
+		var spotLight2 = createSpotLight(0x00ff7f);
+		spotLight2.position.set(150, 150, -150);
 		scene.add(spotLight2);
 
 		// spotlight #3
-		var spotLight3 = new t.SpotLight(0x0000ff);
-		spotLight3.position.set(150, 80, -100);
-		spotLight3.penumbra = 0.3;
-		spotLight3.shadowCameraVisible = true;
-		spotLight3.shadowDarkness = 0.95;
-		spotLight3.intensity = 2;
-		spotLight3.castShadow = true;
-		spotLight3.shadow.mapSize.width = 8192;
-		spotLight3.shadow.mapSize.height = 8192;
+		var spotLight3 = createSpotLight(0x7f00ff);
+		spotLight3.position.set(0, 150, 150);
 		scene.add(spotLight3);
 
-		var lightTarget = new t.Object3D();
-		lightTarget.position.set(150, 10, -100);
-		scene.add(lightTarget);
-
-		spotLight3.target = lightTarget;
+//		var lightTarget = new t.Object3D();
+//		lightTarget.position.set(150, 10, -100);
+//		scene.add(lightTarget);
+//
+//		spotLight3.target = lightTarget;
 
 		// point light
 //		var pointLight = new t.PointLight(0xffffff);
@@ -195,6 +200,7 @@
 		// light debug line
 		scene.add(new t.SpotLightHelper(spotLight1));
 		scene.add(new t.SpotLightHelper(spotLight2));
+		scene.add(new t.SpotLightHelper(spotLight3));
 //		scene.add(new t.PointLightHelper(pointLight));
 	}
 
@@ -325,12 +331,14 @@
 		requestAnimationFrame(render);
 
 		scene.traverse(function (e) {
-			if (e instanceof t.Mesh && e.name == 'mesh') {
+	 		if (e instanceof t.Mesh && e.name == 'mesh') {
 				if (controls.rotation) {
 					e.rotation.x += controls.rotationSpeed;
 					e.rotation.y += controls.rotationSpeed;
 					e.rotation.z += controls.rotationSpeed;
 				}
+			} else if (e instanceof t.SpotLight) {
+				e.angle = controls.angle;
 			}
 		});
 
