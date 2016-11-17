@@ -92,6 +92,9 @@
 
 		var f2 = gui.addFolder('Light');
 		f2.add(controls, 'angle', 0, 1);
+		f2.add(controls, 'penumbra', 0, 1);
+		f2.add(controls, 'decay', 0, 1);
+		f2.add(controls, 'distance', 100, 1000);
 		f2.open();
 	}
 
@@ -157,8 +160,8 @@
 		light.decay = 2;
 		light.distance = 550;
 
-		light.shadow.mapSize.width = 1024;
-		light.shadow.mapSize.height = 1024;
+		light.shadow.mapSize.width = 8192;
+		light.shadow.mapSize.height = 8192;
 
 		return light;
 	}
@@ -339,6 +342,11 @@
 				}
 			} else if (e instanceof t.SpotLight) {
 				e.angle = controls.angle;
+				e.penumbra = controls.penumbra;
+				e.decay = controls.decay;
+				e.distance = controls.distance;
+			} else if (e instanceof t.SpotLightHelper) {
+				e.update();
 			}
 		});
 
